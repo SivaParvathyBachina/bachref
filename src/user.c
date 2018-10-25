@@ -14,21 +14,24 @@
 
 shared_mem *clock;
 pcb *process_control_blocks;
-int shmId,pcbshmId, x,n;
+int shmId,pcbshmId, x,n, processId;
 pid_t childpid;
 
+int randomNumberGenerator(int min, int max)
+{
+	return ((rand() % (max-min +1)) + min);
+}
 
 int main (int argc, char *argv[]) {
 
 childpid = getpid();
 
-while((x = getopt(argc,argv, "s:j:")) != -1)
+while((x = getopt(argc,argv, "p:s:j:")) != -1)
 switch(x)
 {
-//case 'n': 
-//	n = atoi(optarg);
-//	break;
-
+case 'p': 
+	processId = atoi(optarg);
+	break;
 case 's':
         shmId = atoi(optarg);
         break;
@@ -59,7 +62,19 @@ if(process_control_blocks == (void *) -1)
 	perror("Error in attaching shared memory to PCB Array \n");
 }
 
-fprintf(stderr, "Data in Shared Memory %d \n", clock -> seconds);
+fprintf(stderr, "Pid in User  %d \n", processId);
+
+int j;
+//for(j = 0;j<20;j++)
+//{
+//	if(process_control_blocks[j].processId == processId)
+	fprintf(stderr, "%d Launch time \n", process_control_blocks[processId].launch_time);
+	
+//}
+
+//int value = randomNumberGenerator(0,3);
+
+//fprintf(stderr, "%d Launch time \n", process_control_blocks[processId].launch_time);
 
 return 0;
 }

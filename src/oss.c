@@ -18,12 +18,12 @@ pid_t childpid = 0;
 int i,m,k,x,k,s = 5,j,status,p;
 pid_t *child_pids;
 key_t myshmKey, pcbKey;
-int shmId,pcbshmId;
+int shmId,pcbshmId, next_child_time, randomvalue;
 shared_mem *clock; 
 pcb *process_control_blocks;
 FILE *logfile;
 char *file_name;
-
+pid_t *high_priority_queue;
 
 void clearSharedMemory() {
 fprintf(stderr, "------------------------------- CLEAN UP ----------------------- \n");
@@ -69,7 +69,10 @@ clearSharedMemory();
 exit(1);
 }
 
-
+int randomNumberGenerator(int min, int max)
+{
+	return ((rand() % (max-min +1)) + min);
+}
 
 
 int main (int argc, char *argv[]) {
@@ -144,56 +147,54 @@ for(i = 0;i<18;i++){
 	process_control_blocks[i].total_system_time = 0;
 	process_control_blocks[i].cpu_time = 0;
 	process_control_blocks[i].launch_time = 0;
-	process_control_blocks[i].quantum_used = 0;
+	process_control_blocks[i].quantum = 0;
 	process_control_blocks[i].priority = 0;
+	process_control_blocks[i].remaining_time = 0;
 	process_control_blocks[i].flag = 0;	
 }
 child_pids = (pid_t *)malloc(18 * sizeof(int));
+high_priority_queue = (pid_t *)malloc(20 * sizeof(int));
+pid_t mypid;
+i = 1;
+while(i < 4) {
 
-/*for(i=0; i<1; i++)
-{
-	child_pids[i] = fork();
-		if(child_pids[i] == 0)
-		{
-		char argument3[50], argument4[4], argument5[10];
-		char *s_val = "-s";
-		 char *pcbshmVal2 = "-j";
-		//char *semVal = "-k";
-		char *arguments[] = {NULL,s_val, argument3,pcbshmVal2, argument4, NULL};
-		arguments[0]="./user";
-		sprintf(arguments[2], "%d", shmId);
-		sprintf(arguments[4], "%d", pcbshmId);
-		//sprintf(arguments[6], "%s", SEMNAME);
-		process_control_blocks[i].launch_time = (clock -> seconds*NANOSECOND + clock ->nanoseconds);
-		process_control_blocks[i].processId = getpid();
-		execv("./user", arguments);
-		fprintf(stderr, "Error in exec");
-}
-} */
-while(1) {
-		/* child_pids[i] = fork();
+//	if(((clock -> seconds * NANOSECOND) + clock -> nanoseconds) >= next_child_time)
+	//{
+	int choice = randomNumberGenerator(0,1);
+	//if(choice == 0)
+		child_pids[i] = fork();
                 if(child_pids[i] == 0)
                 {
-                char argument3[50], argument4[4], argument5[10];
+		mypid = getpid();
+		high_priority_queue[j] = child_pids[i];
+                char argument2[20],argument3[50], argument4[4], argument5[10];
                 char *s_val = "-s";
 		char *pcbshmVal2 = "-j";
-		 char *arguments[] = {NULL,s_val, argument3,pcbshmVal2, argument4, NULL};
+		char *pidVal = "-p";
+		fprintf(stderr, "%d \n", mypid);
+		char *arguments[] = {NULL,pidVal,argument2,s_val, argument3,pcbshmVal2, argument4, NULL};
                 arguments[0]="./user";
-                sprintf(arguments[2], "%d", shmId);
-                sprintf(arguments[4], "%d", pcbshmId);
+		sprintf(arguments[2], "%d", i);
+                sprintf(arguments[4], "%d", shmId);
+                sprintf(arguments[6], "%d", pcbshmId);
                 process_control_blocks[i].launch_time = (clock -> seconds*NANOSECOND + clock ->nanoseconds);
-                process_control_blocks[i].processId = getpid();
+                process_control_blocks[i].processId = mypid;
+		process_control_blocks[i].quantum = 5;
                 execv("./user", arguments);
                 fprintf(stderr, "Error in exec");
-		}*/
-
-if(clock -> nanoseconds >= NANOSECOND) 
+		}
+	//next_child_time = ((clock -> seconds + ((rand() % 3)+1)) + clock -> nanoseconds)
+//	}
+	
+	randomvalue = randomNumberGenerator(0, 1000);
+	if(clock -> nanoseconds >= NANOSECOND) 
 	{
-	clock -> seconds += value;
+	clock -> seconds += 1;
 	clock -> nanoseconds = 0;
 	}
-	clock -> nanoseconds += 1;	
-
+	clock -> nanoseconds += randomvalue;
+	clock -> seconds += 1;	
+	i++;
 }
 
 while((waitpid(-1, &status, 0) > 0 )){};
