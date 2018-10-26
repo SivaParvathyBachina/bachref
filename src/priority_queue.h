@@ -10,7 +10,7 @@ typedef struct
 }Queue;
 
 
-Queue* createQueue(unsigned capacity)
+Queue* queue(unsigned capacity)
 {
     Queue* priority_queue = (Queue*) malloc(sizeof(Queue));
     priority_queue->capacity = capacity;
