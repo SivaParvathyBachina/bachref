@@ -11,6 +11,8 @@
 #include <fcntl.h>
 #include "shared_mem.h"
 #define SHMSIZE 100
+#define SEMNAME "sembach19181"
+#include <semaphore.h>
 
 #define NANOSECOND 1000000000
 
@@ -24,6 +26,7 @@ pcb *process_control_blocks;
 FILE *logfile;
 char *file_name;
 pid_t *high_priority_queue;
+sem_t *mySemaphore;
 
 void clearSharedMemory() {
 fprintf(stderr, "------------------------------- CLEAN UP ----------------------- \n");
@@ -34,8 +37,8 @@ fprintf(stderr, "OSS started detaching OSS Clock Memory \n");
 fprintf(stderr, "OSS started detaching shmMsg Memory \n");
 shmctl(shmId, IPC_RMID, NULL);
 shmctl(pcbshmId, IPC_RMID, NULL);
-//sem_unlink(SEMNAME);
-//fprintf(stderr, "Unlinked Semaphore \n");
+sem_unlink(SEMNAME);
+fprintf(stderr, "Unlinked Semaphore \n");
 fprintf(stderr, "OSS Cleared the Shared Memory \n");
 }
 
@@ -142,6 +145,11 @@ if(process_control_blocks == (void *) -1)
 	exit(1);
 }
 
+mySemaphore = sem_open(SEMNAME, O_CREAT, 0666,1 );
+
+fprintf(stderr, "Created Semaphore with Name %s \n", SEMNAME);
+
+srand(time(NULL));
 for(i = 0;i<18;i++){
 	process_control_blocks[i].processId = 0;
 	process_control_blocks[i].total_system_time = 0;
@@ -158,42 +166,46 @@ pid_t mypid;
 i = 1;
 while(i < 4) {
 
-//	if(((clock -> seconds * NANOSECOND) + clock -> nanoseconds) >= next_child_time)
-	//{
+	if(((clock -> seconds * NANOSECOND) + clock -> nanoseconds) >= next_child_time)
+	{
 	int choice = randomNumberGenerator(0,1);
 	//if(choice == 0)
 		child_pids[i] = fork();
                 if(child_pids[i] == 0)
                 {
 		mypid = getpid();
+		process_control_blocks[i].launch_time = (clock -> seconds*NANOSECOND + clock ->nanoseconds);
+                process_control_blocks[i].processId = mypid;
+                process_control_blocks[i].quantum = 5;
 		high_priority_queue[j] = child_pids[i];
                 char argument2[20],argument3[50], argument4[4], argument5[10];
                 char *s_val = "-s";
 		char *pcbshmVal2 = "-j";
 		char *pidVal = "-p";
-		fprintf(stderr, "%d \n", mypid);
-		char *arguments[] = {NULL,pidVal,argument2,s_val, argument3,pcbshmVal2, argument4, NULL};
+		char *semVal = "-k";
+		char *arguments[] = {NULL,pidVal,argument2,s_val, argument3,pcbshmVal2, argument4,semVal, argument5, NULL};
                 arguments[0]="./user";
 		sprintf(arguments[2], "%d", i);
                 sprintf(arguments[4], "%d", shmId);
                 sprintf(arguments[6], "%d", pcbshmId);
-                process_control_blocks[i].launch_time = (clock -> seconds*NANOSECOND + clock ->nanoseconds);
-                process_control_blocks[i].processId = mypid;
-		process_control_blocks[i].quantum = 5;
+		sprintf(arguments[8], "%s", SEMNAME);
+		//fprintf(stderr, "%d", (clock -> seconds * NANOSECOND + clock -> nanoseconds));
                 execv("./user", arguments);
                 fprintf(stderr, "Error in exec");
 		}
-	//next_child_time = ((clock -> seconds + ((rand() % 3)+1)) + clock -> nanoseconds)
-//	}
+	next_child_time = ((clock -> seconds + ((rand() % 3)+1)) + clock -> nanoseconds);
+	}
 	
 	randomvalue = randomNumberGenerator(0, 1000);
+	fprintf(stderr, "%d \n", randomvalue);
+	clock -> nanoseconds += randomvalue;
+        clock -> seconds += 1;
+
 	if(clock -> nanoseconds >= NANOSECOND) 
 	{
 	clock -> seconds += 1;
 	clock -> nanoseconds = 0;
 	}
-	clock -> nanoseconds += randomvalue;
-	clock -> seconds += 1;	
 	i++;
 }
 
