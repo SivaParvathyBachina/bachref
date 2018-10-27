@@ -84,8 +84,10 @@ for (k=0; k<20; k++)
 	currentProcess = k;
 	break;
 }
-int choice = randomNumberGenerator(0,3);
-	/*while(1) 
+
+float value;
+/*int choice = randomNumberGenerator(0,3);
+	while(1) 
 	{
 		if(process_control_blocks[k].total_system_time == 50)
 		{
@@ -102,15 +104,14 @@ int choice = randomNumberGenerator(0,3);
 			}
 			else if(choice == 1)
 			{
-			
+				wait(quantum);
 			}
 			else if(choice == 2)
 			{
 				int r = randomNumberGenerator(0,5);
                                 int s = randomNumberGenerator(0,1000);
-				//if(s < 10)
-					//s = s/10;
-                                wait(r.s);
+				value = r + (s/1000);			
+                                wait(value);
                                 sem_post(mySemaphore);
                                 break;	
 			}
@@ -122,7 +123,7 @@ int choice = randomNumberGenerator(0,3);
 				break;
 			}
 		}	
-	} */
+	} */ 
 
 //fprintf(stderr, "%d Launch time \n", process_control_blocks[processId].launch_time);
 

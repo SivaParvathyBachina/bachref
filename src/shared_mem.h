@@ -18,4 +18,10 @@ typedef struct
 	int priority;
 	int flag;
 }pcb;
+
+typedef struct
+{
+	pid_t processId;
+	int quantum;
+}scheduler_clock;
 #endif

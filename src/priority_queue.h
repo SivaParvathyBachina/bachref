@@ -8,11 +8,11 @@ typedef struct
     unsigned capacity;
     int* queue_array;
 }Queue;
+ Queue* priority_queue = NULL;
 
-
-Queue* queue(unsigned capacity)
+Queue* create_queue(unsigned capacity)
 {
-    Queue* priority_queue = (Queue*) malloc(sizeof(Queue));
+    priority_queue = (Queue*) malloc(sizeof(Queue));
     priority_queue->capacity = capacity;
     priority_queue->front_item = priority_queue->size = 0;
     priority_queue->rear_item = capacity - 1;
@@ -37,7 +37,7 @@ void enqueue( Queue* priority_queue, int push_item)
     priority_queue->rear_item = (priority_queue->rear_item + 1)%priority_queue->capacity;
     priority_queue->queue_array[priority_queue->rear_item] = push_item;
     priority_queue->size = priority_queue->size + 1;
-    printf("%d enqueued to priority_queue\n", push_item);
+    //printf("%d enqueued to priority_queue\n", push_item);
 }
 
 int dequeue( Queue* priority_queue)

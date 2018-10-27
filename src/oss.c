@@ -15,20 +15,20 @@
 #include <semaphore.h>
 #include "priority_queue.h"
 #define NANOSECOND 1000000000
+#define SIZE 10
 
 pid_t childpid = 0;
 int i,m,k,x,k,s = 5,j,status,p,priority;
 pid_t *child_pids;
-key_t myshmKey, pcbKey;
-int shmId,pcbshmId, next_child_time, randomvalue;
+key_t myshmKey, pcbKey,schedKey;
+int shmId,pcbshmId,schedId, next_child_time, randomvalue;
 shared_mem *clock; 
+scheduler_clock *scheduler;
 pcb *process_control_blocks;
 FILE *logfile;
 char *file_name;
 sem_t *mySemaphore;
 
-Queue *high_priority_queue = queue(10);
-Queue *low_priority_queue = queue(18);
 
 void clearSharedMemory() {
 fprintf(stderr, "------------------------------- CLEAN UP ----------------------- \n");
@@ -107,8 +107,12 @@ case '?':
         return 1;
 }
 
+
+Queue* high_priority_queue = create_queue(SIZE);
+Queue* low_priority_queue = create_queue(18);
+
 signal(SIGALRM, myhandler);
-alarm(2);
+alarm(5);
 signal(SIGINT, myhandler);
 
 myshmKey = ftok(".", 'c');
@@ -130,6 +134,22 @@ if(clock == (void *) -1)
 
 fprintf(stderr, "Allocated Shared Memory For OSS Clock \n");
 
+schedKey = ftok(".bac", 's');
+schedId = shmget(schedKey, sizeof(scheduler_clock), IPC_CREAT | 0666);
+
+if(schedId < 0)
+{
+	fprintf(stderr, "Error in scheduler Clock \n");
+	exit(1);
+}
+
+scheduler = (scheduler_clock*) shmat(schedId, NULL, 0);
+
+if(scheduler == (void *) -1)
+{
+	perror("Error in attaching csheduler \n");
+	exit(1);
+}
 
 int pcbshmSize = sizeof(process_control_blocks) * 18;
 pcbKey = ftok(".", 'x');
@@ -151,6 +171,11 @@ mySemaphore = sem_open(SEMNAME, O_CREAT, 0666,1 );
 
 fprintf(stderr, "Created Semaphore with Name %s \n", SEMNAME);
 
+clock -> seconds = 0;
+clock -> nanoseconds = 0;
+scheduler -> processId = 0;
+scheduler -> quantum = 2;
+
 srand(time(NULL));
 for(i = 0;i<18;i++){
 	process_control_blocks[i].processId = 0;
@@ -167,44 +192,84 @@ child_pids = (pid_t *)malloc(18 * sizeof(int));
 int currentPCBBlock = -1;
 pid_t mypid;
 while(1)
-{	
+{
 	int k;
+	currentPCBBlock = -1;
 	for(k = 0; k<18; k++)
 	{
 		if(process_control_blocks[k].processId == 0)
+		{
 		currentPCBBlock = k;
-		process_control_blocks[k].processId = 1;
 		break;
+		}
 	}
 	
-	fprintf(stderr, "%d PCB Block is Available \n", currentPCBBlock);
-	if(currentPCBBlock == -1)
+	/*if(currentPCBBlock == -1)
 	fprintf(stderr, "PCB array is Full. Can't create new process \n");
-	
-	priority = rand(0,1);
-	if(priority == 0)
-		enqueue(high_priority_queue, currentPCBBlock);
-	else 
-		enqueue(low_priority_queue, currentPCBBlock);
+	*/
 
-	if(currentPCBBlock != -1)
+	if(currentPCBBlock >= 0)
 	{
-		fprintf(stderr, "Forking Child in PCB Block \n", crrentPCBBlock);
-			
+	priority = randomNumberGenerator(0,100);
+	if(priority >=80)
+		{
+		priority = 1;
+		enqueue(high_priority_queue, currentPCBBlock);
+		}
+	else 
+		{
+		priority = 0;
+		enqueue(low_priority_queue, currentPCBBlock);
+		}
 	}
-	/*randomvalue = randomNumberGenerator(0, 1000);
-	fprintf(stderr, "%d \n", randomvalue);
-	clock -> nanoseconds += randomvalue;
-        clock -> seconds += 1;
+	if((currentPCBBlock >= 0) && (clock -> seconds >= next_child_time) )
+	{
+		if((mypid = fork()) ==0)
+		{
+			
+			exit(0); 
+		}
 
+		else
+		 {
+		 next_child_time += randomNumberGenerator(0,2);
+		 child_pids[i] = mypid;
+                 process_control_blocks[currentPCBBlock].processId = mypid;
+                 process_control_blocks[currentPCBBlock].priority = priority;
+		 process_control_blocks[currentPCBBlock].launch_time = (clock -> seconds * NANOSECOND) + clock -> nanoseconds;
+                 fprintf(stderr, "Forking Child in PCB Block %d, with ID %d, with Priority %d \n", currentPCBBlock, process_control_blocks[currentPCBBlock].processId,  process_control_blocks[currentPCBBlock].priority );
+		}
+	}
+	randomvalue = randomNumberGenerator(0, 1000);
+	clock -> nanoseconds += randomvalue;
 	if(clock -> nanoseconds >= NANOSECOND) 
 	{
 	clock -> seconds += 1;
 	clock -> nanoseconds = 0;
-	} */
+	}
+	
+	if(!isEmpty(high_priority_queue))
+	{
+		int item = dequeue(high_priority_queue);
+		scheduler -> processId = process_control_blocks[item].processId;
+		scheduler -> quantum = 1;
+		//sem_wait(mySemaphore);
+		enqueue(high_priority_queue, item);
+	}
+	else
+	{
+		if(!isEmpty(low_priority_queue))
+		{
+			int item2 = dequeue(low_priority_queue);
+			scheduler -> processId = process_control_blocks[item2].processId;
+			scheduler -> quantum = 2;
+			//sem_wait(mySemaphore);
+			enqueue(low_priority_queue, item2);
+		}
+	}
+	
 }
-
-while((waitpid(-1, &status, 0) > 0 )){};
+//while((waitpid(-1, &status, 0) > 0 )){};
 clearSharedMemory();
 
 return 0;
