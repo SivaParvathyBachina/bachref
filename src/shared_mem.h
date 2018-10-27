@@ -13,8 +13,7 @@ typedef struct
 	long total_system_time;
 	long cpu_time;
 	long launch_time;
-	long quantum;
-	long remaining_time;
+	long used_burst;
 	int priority;
 	int flag;
 }pcb;
