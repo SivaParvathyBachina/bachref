@@ -27,6 +27,17 @@ int randomNumberGenerator(int min, int max)
 	return ((rand() % (max-min +1)) + min);
 }
 
+int q;
+int getPCBBlockId(int processId)
+{
+        for(q = 0; q<18;q++)
+        {
+                if(process_control_blocks[q].processId == processId)
+                return q;
+        }
+}
+
+
 int main (int argc, char *argv[]) {
 
 childpid = getpid();
@@ -46,6 +57,7 @@ case 'j':
 	break;
 case 'k':
 	semName = optarg;
+	//fprintf(stderr, "%s \n", semName);
 	break;
 case '?':
         fprintf(stderr, "Invalid Arguments \n");
@@ -77,11 +89,14 @@ if(scheduler == (void *) -1)
 srand(time(NULL));
 mySemaphore = sem_open (semName , 0); 
 
-//fprintf(stderr, "Pid in User  %d \n", processId);
+//fprintf(stderr, "Pid in User  %d \n", childpid);
+//fprintf(stderr, "Pid in User  %d \n", scheduler -> processId);
+
 
 int choice;
 float value;
-int randomNumber = randomNumberGenerator(0,100);
+
+/* int randomNumber = randomNumberGenerator(0,100);
 if(randomNumber <= 10)
 	choice = 0;
 else if(randomNumber <= 80)
@@ -90,75 +105,73 @@ else if(randomNumber <= 90)
 	choice = 2;
 else 
 	choice = 3;
-
+*/
 int q = 0;
-int getPCBBlockId(int processId)
-{
-	for(q = 0; q<18;q++)
-	{	
-		if(process_control_blocks[q].processId == processId)
-		return q;
-	}
-}
-
+int randomNumber;
+int  mypid = getpid();
 	while(1) 
 	{
-		/* if(process_control_blocks[k].total_system_time == 50)
-		{
-			process_control_blocks[k].termination = 1;
-			sem_post(mySeamphore);
-			break;
-		} */
-		//else
-		//{
+
+//	fprintf(stderr, "Pid in User  %d \n", scheduler -> processId);
+
+	if((scheduler -> processId) == mypid)
+	{
+
+		//fprintf(stderr,"pid : %d, quantum = %d\n",mypid,scheduler -> quantum);
+		randomNumber = randomNumberGenerator(0,100);
+		if(randomNumber <= 10)
+        		choice = 0;
+		else if(randomNumber <= 80)
+        		choice = 1;
+		else if(randomNumber <= 90)
+        		choice = 2;
+		else
+        		choice = 3;
+
 			if(choice == 0)
 			{
-			fprintf(stderr, "Choice Selected 0 , pcb id = %d \n", scheduler -> processId);
-			scheduler -> quantum = quantum_used * 1000;
-			scheduler -> processId = -1;
-			sem_post(mySemaphore);
-			break;	
+				scheduler -> quantum = quantum_used * 1000;
 			}
 			else if(choice == 1)
 			{
-				quantum_used =(float) (scheduler -> quantum)/1000;
+				float quant = (float) scheduler -> quantum;
+				quantum_used =(float) (quant/1000);
 				wait(quantum_used);
 				int blockId = getPCBBlockId(scheduler -> processId);
-				process_control_blocks[blockId].cpu_time += (quantum_used * NANOSECOND);
-				fprintf(stderr, "Choice Selected 1 , pcb id = %d, cpu_time = %d \n", scheduler -> processId,process_control_blocks[blockId].cpu_time);
-				scheduler -> processId = -1;
-				sem_post(mySemaphore);
-				break;
+				process_control_blocks[blockId].cpu_time += (quantum_used);
 			}
 			else if(choice == 2)
 			{
 				int r = randomNumberGenerator(0,5);
                                 int s = randomNumberGenerator(0,1000);
-				quantum_used =(float)  r + (s/1000);			
-                                //wait(quantum_used);
+				float t = (float)s/1000;
+				quantum_used =(float)  r + t;
+                                wait(quantum_used);
                                 int blockId = getPCBBlockId(scheduler -> processId);
-				process_control_blocks[blockId].cpu_time += (quantum_used * NANOSECOND);
-				 fprintf(stderr, "Choice Selected 1 , pcb id = %d, cpu_time = %d \n", scheduler -> processId,process_control_blocks[blockId].cpu_time);
-                                scheduler -> processId = -1;
-                                sem_post(mySemaphore);
-                                break;	
+				process_control_blocks[blockId].cpu_time += quantum_used;
 			}
 			else
 			{
 				int percent = randomNumberGenerator(1,99);
-				quantum_used =(float) ((percent / 100) * (scheduler -> quantum /1000));
-				//wait(quantum_used);
+				float p = (float)percent / 100;
+				float t = (float)scheduler -> quantum / 1000;
+				quantum_used =(float) p * t;
+				wait(quantum_used);
 				int blockId = getPCBBlockId(scheduler -> processId);
-				process_control_blocks[blockId].cpu_time += (quantum_used * NANOSECOND);
-				 fprintf(stderr, "Choice Selected 1 , pcb id = %d, cpu_time = %d \n", scheduler -> processId,process_control_blocks[blockId].cpu_time);
-                                scheduler -> processId = -1;
-				sem_post(mySemaphore);
-				break;
+				process_control_blocks[blockId].cpu_time += quantum_used;
 			}
-		quantum_used = 0;
-	}
-	
-//fprintf(stderr, "%d Launch time \n", process_control_blocks[processId].launch_time);
+	        quantum_used = 0;
+		int pcb_id = getPCBBlockId(mypid);
+		if(process_control_blocks[pcb_id].cpu_time >= 0.05)
+		{
+			int termination = randomNumberGenerator(0,100);
+			if(termination <= 50)
+			process_control_blocks[pcb_id].flag = 1;
 
+		}	 	
+		 scheduler -> processId = -1;
+                 sem_post(mySemaphore);
+	}
+	}
 return 0;
 }
