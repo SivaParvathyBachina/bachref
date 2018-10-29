@@ -89,35 +89,16 @@ if(scheduler == (void *) -1)
 srand(time(NULL));
 mySemaphore = sem_open (semName , 0); 
 
-//fprintf(stderr, "Pid in User  %d \n", childpid);
-//fprintf(stderr, "Pid in User  %d \n", scheduler -> processId);
-
-
 int choice;
 float value;
 
-/* int randomNumber = randomNumberGenerator(0,100);
-if(randomNumber <= 10)
-	choice = 0;
-else if(randomNumber <= 80)
-	choice = 1;
-else if(randomNumber <= 90)
-	choice = 2;
-else 
-	choice = 3;
-*/
 int q = 0;
 int randomNumber;
 int  mypid = getpid();
 	while(1) 
 	{
-
-//	fprintf(stderr, "Pid in User  %d \n", scheduler -> processId);
-
 	if((scheduler -> processId) == mypid)
 	{
-
-		//fprintf(stderr,"pid : %d, quantum = %d\n",mypid,scheduler -> quantum);
 		randomNumber = randomNumberGenerator(0,100);
 		if(randomNumber <= 10)
         		choice = 0;
@@ -139,6 +120,7 @@ int  mypid = getpid();
 				wait(quantum_used);
 				int blockId = getPCBBlockId(scheduler -> processId);
 				process_control_blocks[blockId].cpu_time += (quantum_used);
+				process_control_blocks[blockId].used_burst = quantum_used * NANOSECOND;	
 			}
 			else if(choice == 2)
 			{
@@ -149,6 +131,7 @@ int  mypid = getpid();
                                 wait(quantum_used);
                                 int blockId = getPCBBlockId(scheduler -> processId);
 				process_control_blocks[blockId].cpu_time += quantum_used;
+				process_control_blocks[blockId].used_burst = quantum_used * NANOSECOND;
 			}
 			else
 			{
@@ -159,6 +142,7 @@ int  mypid = getpid();
 				wait(quantum_used);
 				int blockId = getPCBBlockId(scheduler -> processId);
 				process_control_blocks[blockId].cpu_time += quantum_used;
+				process_control_blocks[blockId].used_burst = quantum_used * NANOSECOND;
 			}
 	        quantum_used = 0;
 		int pcb_id = getPCBBlockId(mypid);
@@ -166,8 +150,11 @@ int  mypid = getpid();
 		{
 			int termination = randomNumberGenerator(0,100);
 			if(termination <= 50)
+			{
 			process_control_blocks[pcb_id].flag = 1;
-
+			sem_post(mySemaphore);
+			break;
+			}
 		}	 	
 		 scheduler -> processId = -1;
                  sem_post(mySemaphore);
