@@ -21,6 +21,17 @@ pid_t childpid;
 sem_t *mySemaphore;
 char *semName;
 float quantum_used;
+int m = 4;
+long int endsec, endnano, startsec, startnano;
+
+int calculate_total(long int sec, long int endsec, long int nano, long int nanosec)
+{
+        long int finalsec = endsec - sec;
+        long int final_nano = nanosec - nano;
+        long int total_time = finalsec + final_nano;
+        return total_time;
+}
+
 
 int randomNumberGenerator(int min, int max)
 {
@@ -64,6 +75,9 @@ case '?':
         return 1;
 }
 
+//long int total_start_sec = clock -> seconds;
+//long int total_start_nano = clock -> nanoseconds;
+
 clock = (shared_mem*) shmat(shmId, NULL, 0);
 
 if(clock == (void *) -1)
@@ -86,7 +100,10 @@ if(scheduler == (void *) -1)
 	exit(1);
 }
 
-srand(time(NULL));
+startsec = clock -> seconds;
+startnano = clock -> nanoseconds;
+
+
 mySemaphore = sem_open (semName , 0); 
 
 int choice;
@@ -95,7 +112,8 @@ float value;
 int q = 0;
 int randomNumber;
 int  mypid = getpid();
-	while(1) 
+
+while(1) 
 	{
 	if((scheduler -> processId) == mypid)
 	{
@@ -111,13 +129,14 @@ int  mypid = getpid();
 
 			if(choice == 0)
 			{
-				scheduler -> quantum = quantum_used * 1000;
+				int blockId = getPCBBlockId(scheduler -> processId);
+				process_control_blocks[blockId].used_burst = 0;
 			}
 			else if(choice == 1)
 			{
 				float quant = (float) scheduler -> quantum;
 				quantum_used =(float) (quant/1000);
-				wait(quantum_used);
+				//wait(quantum_used);
 				int blockId = getPCBBlockId(scheduler -> processId);
 				process_control_blocks[blockId].cpu_time += (quantum_used);
 				process_control_blocks[blockId].used_burst = quantum_used * NANOSECOND;	
@@ -128,7 +147,7 @@ int  mypid = getpid();
                                 int s = randomNumberGenerator(0,1000);
 				float t = (float)s/1000;
 				quantum_used =(float)  r + t;
-                                wait(quantum_used);
+                                //wait(quantum_used);
                                 int blockId = getPCBBlockId(scheduler -> processId);
 				process_control_blocks[blockId].cpu_time += quantum_used;
 				process_control_blocks[blockId].used_burst = quantum_used * NANOSECOND;
@@ -139,7 +158,7 @@ int  mypid = getpid();
 				float p = (float)percent / 100;
 				float t = (float)scheduler -> quantum / 1000;
 				quantum_used =(float) p * t;
-				wait(quantum_used);
+				//wait(quantum_used);
 				int blockId = getPCBBlockId(scheduler -> processId);
 				process_control_blocks[blockId].cpu_time += quantum_used;
 				process_control_blocks[blockId].used_burst = quantum_used * NANOSECOND;
@@ -148,10 +167,15 @@ int  mypid = getpid();
 		int pcb_id = getPCBBlockId(mypid);
 		if(process_control_blocks[pcb_id].cpu_time >= 0.05)
 		{
+			srand(m++);
 			int termination = randomNumberGenerator(0,100);
-			if(termination <= 50)
+			if(termination % 2 == 0)
 			{
 			process_control_blocks[pcb_id].flag = 1;
+			endsec = clock -> seconds;
+			endnano = clock -> nanoseconds;
+			long int total_time = calculate_total(startsec, endsec, startnano, endnano);
+			process_control_blocks[pcb_id].total_system_time = total_time / 1000000;		
 			sem_post(mySemaphore);
 			break;
 			}

@@ -11,7 +11,7 @@
 #include <fcntl.h>
 #include "shared_mem.h"
 #define SHMSIZE 100
-#define SEMNAME "sembach1981s"
+#define SEMNAME "sembach19181"
 #include <semaphore.h>
 #include "priority_queue.h"
 #define NANOSECOND 1000000000
@@ -19,31 +19,20 @@
 #define SIZE 10
 
 pid_t childpid = 0;
-int i,m,k,x,k,s = 5,j,status,p,q,priority, child_count;
+int i,m,k,x,k,s = 5,j,status,p,q,priority;
 pid_t *child_pids;
 key_t myshmKey, pcbKey,schedKey;
-int shmId,pcbshmId,schedId, next_child_time, randomvalue, log_lines = 0;
+int shmId,pcbshmId,schedId, next_child_time, randomvalue, log_lines = 0, child_count = 0;
 shared_mem *clock; 
 scheduler_clock *scheduler;
 pcb *process_control_blocks;
 FILE *logfile;
 char *file_name;
 sem_t *mySemaphore;
-long int dispatch_start_sec, dispatch_start_nano, dispatch_end_sec, dispatch_end_nanosec;
-long int finalsec, finalnanosec, total_dispatch;
 
-
-
-int calculate_dispatch(long int sec, long int endsec, long int nano, long int nanosec) 
-{
-	long int finalsec = sec - endsec;
-	long int final_nano = nano - nanosec;
-	long int dispatch = finalsec * NANOSECOND + final_nano; 
-	return dispatch;
-}
 
 void clearSharedMemory() {
-fprintf(stderr, "Total Child COunt %d \n", child_count);
+fprintf(stderr, "Total Childs Forked : %d \n", child_count);
 fprintf(stderr, "------------------------------- CLEAN UP ----------------------- \n");
 shmdt((void *)clock);
 shmdt((void *)process_control_blocks);
@@ -207,6 +196,7 @@ if(logfile == NULL){
 }
 
 srand(time(NULL));
+
 for(i = 0;i<18;i++){
 	process_control_blocks[i].processId = 0;
 	process_control_blocks[i].total_system_time = 0;
@@ -219,10 +209,11 @@ for(i = 0;i<18;i++){
 child_pids = (pid_t *)malloc(18 * sizeof(int));
 
 int currentPCBBlock = -1;
-int filesize,k;
+int filesize;
 pid_t mypid;
 while(1)
 {
+	int k;
 	currentPCBBlock = -1;
 	for(k = 0; k<18; k++)
 	{
@@ -239,9 +230,9 @@ while(1)
 
 	if((currentPCBBlock >= 0) && (clock -> seconds >= next_child_time))
 	{
-		child_count++;
 		if((mypid = fork()) ==0)
 		{
+		//	child_count++;
 			char argument2[20],argument3[50], argument4[4], argument5[10];
                 	char *s_val = "-s";
 			char *pcbshmVal2 = "-j";
@@ -257,7 +248,8 @@ while(1)
                 	fprintf(stderr, "Error in exec");
 			exit(0); 
 		}
-
+		
+		child_count++;
 		priority = randomNumberGenerator(0,100);
 	        if(priority <=80)
                 	 {
@@ -277,7 +269,7 @@ while(1)
 		if(log_lines <10000)
 		{
                 log_lines++;
-		fprintf(logfile, "OSS: Generating process with PID %d, with priority %d at time %d.%d with at location ####### %d priority ********************* %d \n", process_control_blocks[currentPCBBlock].processId, process_control_blocks[currentPCBBlock].priority, clock -> seconds, clock -> nanoseconds, currentPCBBlock, process_control_blocks[currentPCBBlock].priority);
+		fprintf(stderr, "OSS: Generating process with PID %d, with priority %d at time %d.%d with at location ####### %d priority ********************* %d \n", process_control_blocks[currentPCBBlock].processId, process_control_blocks[currentPCBBlock].priority, clock -> seconds, clock -> nanoseconds, currentPCBBlock, process_control_blocks[currentPCBBlock].priority);
 		}
 	}
 
@@ -294,16 +286,18 @@ while(1)
 		int item = dequeue(high_priority_queue);
 		scheduler -> processId = process_control_blocks[item].processId;
 		scheduler -> quantum = 10;
-		dispatch_start_sec = clock -> seconds;
-		dispatch_start_nano = clock -> nanoseconds;
-		total_dispatch = calculate_dispatch(dispatch_start_sec, dispatch_end_sec, dispatch_start_nano, dispatch_end_nanosec);
+		 long int dispatch_end_secs, dispatch_end_nanosec;
+		/*long int dispatch_start_sec = clock -> seconds;
+		long int  dispatch_start_nano = clock -> nanoseconds;
+		long int finalsec = (dispatch_start_sec - dispatch_end_secs);
+		long int finalnanosec = (dispatch_start_nano - dispatch_end_nanosec);
+		long int total_dispatch = finalsec * NANOSECOND + finalnanosec;*/
 		if(log_lines <10000)
                 {
                 	log_lines++;
-			fprintf(logfile, "OSS: Dispatching process with PID %d from queue 0 at %d:%ld \n", process_control_blocks[item].processId, clock -> seconds, clock -> nanoseconds);
-			fprintf(logfile, "OSS: Total time this dispatch took was %ld nanoseconds \n", total_dispatch);
+			fprintf(stderr, "OSS: Dispatching process with PID %d from queue 0 at %d:%ld \n", process_control_blocks[item].processId, clock -> seconds, clock -> nanoseconds);
+			//fprintf(stderr, "OSS: Total time this dispatch took was %ld nanoseconds \n",total_dispatch);
 		}
-		
 		sem_wait(mySemaphore);
 
 		clock -> nanoseconds +=  process_control_blocks[item].used_burst;
@@ -315,9 +309,8 @@ while(1)
 		if(log_lines <10000)
                 {
                 	log_lines++;
-			fprintf(logfile, "OSS: Receiving that process %d ran for %d nanoseconds \n", process_control_blocks[item].processId, process_control_blocks[item].used_burst);
+			fprintf(stderr, "OSS: Receiving that process %d ran for %ld nanoseconds \n", process_control_blocks[item].processId, process_control_blocks[item].used_burst);
 		}
-
 		if(process_control_blocks[item].flag == 0)
 		{
 			if(process_control_blocks[item].used_burst != 10000000)
@@ -325,46 +318,40 @@ while(1)
 			 if(log_lines <10000)
                 		{
                 		log_lines++;
-				fprintf(logfile, "OSS: Not using its full quantum \n");
+				fprintf(stderr, "OSS: Not using its full quantum \n");
 				}
 			}
 			enqueue(high_priority_queue, item);
 			if(log_lines <10000)
 			{                       
                         log_lines++;
-			fprintf(logfile, "OSS: Putting process with PID %d into queue 0 \n",process_control_blocks[item].processId);
+			fprintf(stderr, "OSS: Putting process with PID %d into queue 0 \n",process_control_blocks[item].processId);
 			}
 		}
 		else
-		{
-			if(log_lines <10000)
-                        {
-                        	log_lines++;
-				fprintf(logfile, "OSS: Process with pid %d Completed \n ", process_control_blocks[item].processId);
-				fprintf(logfile, "OSS: This process took total %ld \n", process_control_blocks[item].total_system_time);
-				waitpid(process_control_blocks[item].processId, &status, 0);
-                        	process_control_blocks[item].processId = 0;
+			{
+			fprintf(stderr, "OSS: Process with pid %d Completed \n ", process_control_blocks[item].processId);
+			//fprintf(stderr, "OSS: Total_time Used %ld \n ", process_control_blocks[item].total_system_time);
+			waitpid(process_control_blocks[item].processId, &status, 0);
+			process_control_blocks[item].processId = 0;
 			}
-		}
-		 dispatch_end_sec = clock -> seconds;
-                dispatch_end_nanosec = clock -> nanoseconds;
-		fprintf(logfile, "-------------------------------------------------------\n");
+		dispatch_end_secs = clock -> seconds;
+		dispatch_end_nanosec = clock -> nanoseconds;
+		fprintf(stderr, "-------------------------------------------------------\n");
 	}
 	else if(isEmpty(low_priority_queue) > 0)
 		{
 			int item2 = dequeue(low_priority_queue);
                 	scheduler -> processId = process_control_blocks[item2].processId;
 			scheduler -> quantum = 20;
-			dispatch_start_sec = clock -> seconds;
-               		 dispatch_start_nano = clock -> nanoseconds;
-                	total_dispatch = calculate_dispatch(dispatch_start_sec, dispatch_end_sec, dispatch_start_nano, dispatch_end_nanosec);
-			if(log_lines <10000)
-                        {
-                        log_lines++;
-			fprintf(logfile, "OSS: Dispatching process with PID %d from queue 1 at %d:%ld \n", process_control_blocks[item2].processId, clock -> seconds, clock -> nanoseconds);
-			fprintf(logfile, "OSS: Total time this dispatch took was %ld nanoseconds \n", total_dispatch);
-			}
-
+			long int dispatch_end_secs, dispatch_end_nanosec;
+                	/*long int dispatch_start_sec = clock -> seconds;
+                	long int  dispatch_start_nano = clock -> nanoseconds;
+                	long int finalsec = (dispatch_start_sec - dispatch_end_secs);
+                	long int finalnanosec = (dispatch_start_nano - dispatch_end_nanosec);
+                	long int total_dispatch = finalsec * NANOSECOND + finalnanosec;*/
+			fprintf(stderr, "OSS: Dispatching process with PID %d from queue 1 at %d:%ld \n", process_control_blocks[item2].processId, clock -> seconds, clock -> nanoseconds);
+			fprintf(stderr, "OSS: Total time this dispatch took was %ld nanoseconds \n", item2);
 			sem_wait(mySemaphore);
 
 			clock -> nanoseconds +=  process_control_blocks[item2].used_burst;
@@ -373,50 +360,36 @@ while(1)
        			clock -> seconds += (clock -> nanoseconds) / NANOSECOND;
         		clock -> nanoseconds = (clock -> nanoseconds) % NANOSECOND;
         		}
-			
-
-			if(log_lines <10000)
-                        {
-                        log_lines++;
-			fprintf(logfile, "OSS: Receiving that process %d ran for %d nanoseconds \n", process_control_blocks[item2].processId, process_control_blocks[item2].used_burst);
-			}
 	
+			fprintf(stderr, "OSS: Receiving that process %d ran for %ld nanoseconds \n", process_control_blocks[item2].processId, process_control_blocks[item2].used_burst);
 			if(process_control_blocks[item2].flag == 0)
 			{
 				if(process_control_blocks[item2].used_burst != 20000000)	
-				 if(log_lines <10000)
-        		                {
-	                	        log_lines++;
-                			fprintf(logfile, "OSS: Not using its full quantum \n");
-					fprintf(logfile, "OSS: Putting process with PID %d into queue 1 \n",process_control_blocks[item2].processId);
-					}
-				 enqueue(low_priority_queue, item2);
+                		fprintf(stderr, "OSS: Not using its full quantum \n");
+				enqueue(low_priority_queue, item2);
+				fprintf(stderr, "OSS: Putting process with PID %d into queue 1 \n",process_control_blocks[item2].processId);
 			}
 			else
-        	        {
-				if(log_lines <10000)
-                                {
-                                	log_lines++;
-					fprintf(logfile, "OSS: Process with pid %d Completed \n ", process_control_blocks[item2].processId);
-					fprintf(logfile, "OSS: This process took total %ld \n", process_control_blocks[item2].total_system_time);
-				}
+			{
+        	        	fprintf(stderr, "OSS: Process with pid %d Completed \n ", process_control_blocks[item2].processId);
+				//fprintf(stderr, "OSS: Total_time Used %ld \n ", process_control_blocks[item2].total_system_time);
 				waitpid(process_control_blocks[item2].processId, &status, 0);
-                        	process_control_blocks[item2].processId = 0;
+				process_control_blocks[item2].processId = 0;
 			}
-			dispatch_end_sec = clock -> seconds;
-                	dispatch_end_nanosec = clock -> nanoseconds;
+			dispatch_end_secs = clock -> seconds;
+               	 	 dispatch_end_nanosec = clock -> nanoseconds;
+			fprintf(stderr, "-------------------------------------------------------\n");
 		}
-	 else
-                {
-                        clock -> seconds += 1;
-                        clock -> nanoseconds +=  randomNumberGenerator(0,1000);
+	else 
+		{
+			clock -> seconds += 1;
+			clock -> nanoseconds +=  randomNumberGenerator(0,1000);
                         if(clock -> nanoseconds >= NANOSECOND)
                         {
                         clock -> seconds += (clock -> nanoseconds) / NANOSECOND;
                         clock -> nanoseconds = (clock -> nanoseconds) % NANOSECOND;
                         }
-                }
-
+		}
 }
 clearSharedMemory();
 
