@@ -49,6 +49,7 @@ shmdt((void *)clock);
 shmdt((void *)process_control_blocks);
 shmdt((void *)scheduler);
 fprintf(stderr,"Closing File \n");
+fclose(logfile);
 fprintf(stderr, "OSS started detaching all the shared memory segments \n");
 shmctl(shmId, IPC_RMID, NULL);
 shmctl(pcbshmId, IPC_RMID, NULL);
@@ -201,7 +202,6 @@ for(i = 0;i<18;i++){
 	process_control_blocks[i].used_burst = 0.0;
 	process_control_blocks[i].flag = 0;	
 }
-child_pids = (pid_t *)malloc(18 * sizeof(int));
 
 int currentPCBBlock = -1;
 int filesize,k;

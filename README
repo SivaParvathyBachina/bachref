@@ -8,6 +8,10 @@ The structure in hoare server is
 
 
 Sample Execution Format: ./oss -l [logfilename] -h [help]
+
+The termination criteria for this project is 2 real life seconds.
+0 - High Priority queue
+1 - Low priority queue
 ========================================================================
 
 There are 2 files named oss.c and user.c
