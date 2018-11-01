@@ -1,0 +1,29 @@
+The structure in hoare server is 
+		
+		bachina.4  --->   Makefile
+				  src   --------> oss.c, user.c, shared_mem.h, priority_queue.h
+				  README
+				  Logfile With the User Specified Name.
+				  Gitlog
+
+
+Sample Execution Format: ./oss -l [logfilename] -h [help]
+========================================================================
+
+There are 2 files named oss.c and user.c
+
+Shared_mem.h is a header file that holds the structure of the oss clock the shmMsg.
+
+shared_mem.h also contains a struct named pcb which holds the processId, used_burst, cpu_time, launch_time, priority and a flag. 
+
+shared_mem.h also has a struct named scheduler_clock where the process puts its pid and quantum used everytime after it is finished. 
+
+To run the project: cd to bachina.4 folder: make all, All the executables will be generated.
+
+and then give the command ./oss -l logfile name
+
+To remove the object files give command,  make clean
+
+The output is written to the logfile that is specified by the user. After 10,000 lines the output will not be logged. 
+
+All the files are pushed to github.

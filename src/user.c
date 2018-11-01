@@ -28,6 +28,8 @@ int calculate_total(long int sec, long int endsec, long int nano, long int nanos
 {
         long int finalsec = endsec - sec;
         long int final_nano = nanosec - nano;
+	//fprintf(stderr, "%ld \n", finalsec);
+	//fprintf(stderr, "%ld \n", final_nano);
         long int total_time = finalsec + final_nano;
         return total_time;
 }
@@ -175,7 +177,11 @@ while(1)
 			endsec = clock -> seconds;
 			endnano = clock -> nanoseconds;
 			long int total_time = calculate_total(startsec, endsec, startnano, endnano);
-			process_control_blocks[pcb_id].total_system_time = total_time / 1000000;		
+			//fprintf(stderr, "%ld \n", endsec);
+			//fprintf(stderr, "%ld \n", startsec);
+			 //fprintf(stderr, "%ld \n", startnano);
+			 //fprintf(stderr, "%ld \n", endnano);
+			process_control_blocks[pcb_id].total_system_time = (total_time / 1000000) + quantum_used;		
 			sem_post(mySemaphore);
 			break;
 			}

@@ -43,14 +43,13 @@ int calculate_dispatch(long int sec, long int endsec, long int nano, long int na
 }
 
 void clearSharedMemory() {
-fprintf(stderr, "Total Child COunt %d \n", child_count);
+fprintf(stderr, "Total Children Forked : %d \n", child_count);
 fprintf(stderr, "------------------------------- CLEAN UP ----------------------- \n");
 shmdt((void *)clock);
 shmdt((void *)process_control_blocks);
 shmdt((void *)scheduler);
-//fprintf(stderr,"Cloising File \n");
-fprintf(stderr, "OSS started detaching OSS Clock Memory \n");
-fprintf(stderr, "OSS started detaching shmMsg Memory \n");
+fprintf(stderr,"Closing File \n");
+fprintf(stderr, "OSS started detaching all the shared memory segments \n");
 shmctl(shmId, IPC_RMID, NULL);
 shmctl(pcbshmId, IPC_RMID, NULL);
 shmctl(schedId, IPC_RMID, NULL);
@@ -63,11 +62,8 @@ fprintf(stderr, "OSS Cleared the Shared Memory \n");
 void killExistingChildren(){
 for(k=0; k<18; k++)
 {
-fprintf(stderr, "cpu : %f, pid : %d, flag :%d \n", process_control_blocks[k].cpu_time, process_control_blocks[k].processId, process_control_blocks[k].flag);
 if(process_control_blocks[k].processId != 0)
 {
-//fprintf(stderr, "cpu : %d \n", process_control_blocks[k].cpu_time);
-//fprintf(stderr, "Killing child with Id %d \n", process_control_blocks[k].processId);
 kill(process_control_blocks[k].processId, SIGTERM);
 }
 }
@@ -99,25 +95,14 @@ int randomNumberGenerator(int min, int max)
 
 int main (int argc, char *argv[]) {
 
-if (argc < 2){
-fprintf(stderr, "Invalid number of arguments. Please give it in the following format");
-fprintf(stderr, "Usage: %s  -n processess -h [help] -p [error message]", argv[0]);
-return 1;
-}
 while((x = getopt(argc,argv, "hs:l:")) != -1)
 switch(x)
 {
 case 'h':
-        fprintf(stderr, "Usage: %s -s processCount -l logfile_name -t  -h [help]\n", argv[0]);
+        fprintf(stderr, "Usage: %s -l logfile_name  -h [help]\n", argv[0]);
         return 1;
-case 's':
-	s = atoi(optarg);
-	break;
 case 'l':
 	file_name = optarg;
-	break;
-//case 't': 
-//	programRunTime = atoi(optarg); 
 	break;
 case '?':
         fprintf(stderr, "Please give '-h' for help to see valid arguments \n");
@@ -130,7 +115,7 @@ Queue* high_priority_queue = create_queue(20);
 Queue* low_priority_queue = create_queue(20);
 
 signal(SIGALRM, myhandler);
-alarm(s);
+alarm(2);
 signal(SIGINT, myhandler);
 
 myshmKey = ftok(".", 'c');
@@ -277,7 +262,7 @@ while(1)
 		if(log_lines <10000)
 		{
                 log_lines++;
-		fprintf(logfile, "OSS: Generating process with PID %d, with priority %d at time %d.%d with at location ####### %d priority ********************* %d \n", process_control_blocks[currentPCBBlock].processId, process_control_blocks[currentPCBBlock].priority, clock -> seconds, clock -> nanoseconds, currentPCBBlock, process_control_blocks[currentPCBBlock].priority);
+		fprintf(logfile, "OSS: Generating process with PID %d, with priority %d at time %d.%d \n", process_control_blocks[currentPCBBlock].processId, process_control_blocks[currentPCBBlock].priority, clock -> seconds, clock -> nanoseconds);
 		}
 	}
 
@@ -315,7 +300,7 @@ while(1)
 		if(log_lines <10000)
                 {
                 	log_lines++;
-			fprintf(logfile, "OSS: Receiving that process %d ran for %d nanoseconds \n", process_control_blocks[item].processId, process_control_blocks[item].used_burst);
+			fprintf(logfile, "OSS: Receiving that process %d ran for %ld nanoseconds \n", process_control_blocks[item].processId, process_control_blocks[item].used_burst);
 		}
 
 		if(process_control_blocks[item].flag == 0)
@@ -341,17 +326,21 @@ while(1)
                         {
                         	log_lines++;
 				fprintf(logfile, "OSS: Process with pid %d Completed \n ", process_control_blocks[item].processId);
-				fprintf(logfile, "OSS: This process took total %ld \n", process_control_blocks[item].total_system_time);
+				fprintf(logfile, "OSS: This process total time  %f \n", process_control_blocks[item].total_system_time);
 				waitpid(process_control_blocks[item].processId, &status, 0);
                         	process_control_blocks[item].processId = 0;
-			}
+				process_control_blocks[item].cpu_time = 0;
+				 process_control_blocks[item].used_burst = 0;
+				 process_control_blocks[item].flag = 0;
+				process_control_blocks[item].total_system_time = 0;
+		}
 		}
 		 dispatch_end_sec = clock -> seconds;
                 dispatch_end_nanosec = clock -> nanoseconds;
-		fprintf(logfile, "-------------------------------------------------------\n");
+		fprintf(logfile, "\n");
 	}
 	else if(isEmpty(low_priority_queue) > 0)
-		{
+	{
 			int item2 = dequeue(low_priority_queue);
                 	scheduler -> processId = process_control_blocks[item2].processId;
 			scheduler -> quantum = 20;
@@ -378,19 +367,25 @@ while(1)
 			if(log_lines <10000)
                         {
                         log_lines++;
-			fprintf(logfile, "OSS: Receiving that process %d ran for %d nanoseconds \n", process_control_blocks[item2].processId, process_control_blocks[item2].used_burst);
+			fprintf(logfile, "OSS: Receiving that process %d ran for %ld nanoseconds \n", process_control_blocks[item2].processId, process_control_blocks[item2].used_burst);
 			}
 	
 			if(process_control_blocks[item2].flag == 0)
 			{
-				if(process_control_blocks[item2].used_burst != 20000000)	
+				if(process_control_blocks[item2].used_burst != 20000000)
+				{	
 				 if(log_lines <10000)
         		                {
 	                	        log_lines++;
                 			fprintf(logfile, "OSS: Not using its full quantum \n");
-					fprintf(logfile, "OSS: Putting process with PID %d into queue 1 \n",process_control_blocks[item2].processId);
 					}
+				}
 				 enqueue(low_priority_queue, item2);
+				 if(log_lines <10000)
+                                {
+                                log_lines++;
+				fprintf(logfile, "OSS: Putting process with PID %d into queue 1 \n",process_control_blocks[item2].processId);
+				}
 			}
 			else
         	        {
@@ -398,15 +393,20 @@ while(1)
                                 {
                                 	log_lines++;
 					fprintf(logfile, "OSS: Process with pid %d Completed \n ", process_control_blocks[item2].processId);
-					fprintf(logfile, "OSS: This process took total %ld \n", process_control_blocks[item2].total_system_time);
+					fprintf(logfile, "OSS: This process took total %f \n", process_control_blocks[item2].total_system_time);
 				}
 				waitpid(process_control_blocks[item2].processId, &status, 0);
                         	process_control_blocks[item2].processId = 0;
+				process_control_blocks[item2].cpu_time = 0;
+                                 process_control_blocks[item2].used_burst = 0;
+                                 process_control_blocks[item2].flag = 0;
+				 process_control_blocks[item2].total_system_time = 0;
 			}
 			dispatch_end_sec = clock -> seconds;
                 	dispatch_end_nanosec = clock -> nanoseconds;
+			fprintf(logfile, "\n");
 		}
-	 else
+		else
                 {
                         clock -> seconds += 1;
                         clock -> nanoseconds +=  randomNumberGenerator(0,1000);

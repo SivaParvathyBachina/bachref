@@ -10,10 +10,10 @@ typedef struct
 typedef struct
 {
 	pid_t processId;
-	long int total_system_time;
+	float total_system_time;
 	float cpu_time;
-	long launch_time;
-	long used_burst;
+	long int launch_time;
+	long int used_burst;
 	int priority;
 	int flag;
 }pcb;
